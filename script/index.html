@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Скрипт первого разговора</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;500;600&family=Golos+Text:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: sticky route of 9 stages on the left (chips on phone) + one reading column; branch switch recolours branch-specific blocks */
+:root{
+  --bg:#F5F5F0; --surface:#FFFFFF; --soft:#E9EAE2; --line:#D5D7CB;
+  --fg:#22241E; --muted:#6A6C62;
+  --olive:#5F6154; --olive-strong:#46483D; --on-olive:#FFFFFF;
+  --say-bg:#F0F1EA; --say-line:#5F6154;
+  --key:#9A5B1E; --key-bg:#FBF0E2;
+  --warn:#A23B2A; --warn-bg:#F8E7E3;
+  --fam:#3F6A73; --fam-bg:#E3EEF0;
+  --inh:#7A5A86; --inh-bg:#EFE7F2;
+  --ali:#8A6A2C; --ali-bg:#F4ECDC;
+  --display:"Cormorant Garamond", "Times New Roman", Georgia, serif;
+  --body:"Golos Text", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#1B1C18; --surface:#24261F; --soft:#2E3028; --line:#3C3F34;
+  --fg:#ECEDE6; --muted:#A6A89C;
+  --olive:#A9AC97; --olive-strong:#C5C8B2; --on-olive:#1B1C18;
+  --say-bg:#2B2D25; --say-line:#A9AC97;
+  --key:#E3A867; --key-bg:#372A1C;
+  --warn:#EE8A77; --warn-bg:#3A231E;
+  --fam:#86BAC4; --fam-bg:#1F3236;
+  --inh:#C3A2D0; --inh-bg:#30253A;
+  --ali:#D9B672; --ali-bg:#352C1B;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#1B1C18; --surface:#24261F; --soft:#2E3028; --line:#3C3F34;
+  --fg:#ECEDE6; --muted:#A6A89C;
+  --olive:#A9AC97; --olive-strong:#C5C8B2; --on-olive:#1B1C18;
+  --say-bg:#2B2D25; --say-line:#A9AC97;
+  --key:#E3A867; --key-bg:#372A1C;
+  --warn:#EE8A77; --warn-bg:#3A231E;
+  --fam:#86BAC4; --fam-bg:#1F3236;
+  --inh:#C3A2D0; --inh-bg:#30253A;
+  --ali:#D9B672; --ali-bg:#352C1B;
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6;padding-inline:16px;padding-block:0 64px}
+h1,h2,h3{text-wrap:balance;margin:0}
+p{margin:0}
+.wrap{max-width:1120px;margin:0 auto}
+
+/* Hero */
+.hero{padding-block:40px 28px;border-bottom:1px solid var(--line);display:grid;gap:18px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.hero h1{font-family:var(--display);font-weight:300;font-size:clamp(38px,6vw,64px);line-height:1.02;letter-spacing:.01em;text-transform:uppercase;color:var(--olive-strong)}
+.hero .lead{max-width:62ch;color:var(--muted);font-size:17px}
+.hero .lead b{color:var(--fg);font-weight:600}
+
+/* Branch switch */
+.switch{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.switch .lbl{font-size:13px;color:var(--muted);margin-right:4px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:4px;background:var(--surface);gap:4px}
+.seg button{font:inherit;font-size:14px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:8px 16px;border-radius:999px;cursor:pointer}
+.seg button:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+.seg button[aria-pressed="true"][data-b="fam"]{background:var(--fam);color:var(--on-olive)}
+.seg button[aria-pressed="true"][data-b="inh"]{background:var(--inh);color:var(--on-olive)}
+.seg button[aria-pressed="true"][data-b="ali"]{background:var(--ali);color:var(--on-olive)}
+
+/* Name tracker */
+.names{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.names .dot{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--soft);color:var(--fg)}
+.names .dot i{font-style:normal;width:18px;height:18px;border-radius:50%;background:var(--olive);color:var(--on-olive);display:grid;place-items:center;font-size:11px;font-weight:700}
+
+/* Shell */
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:48px;padding-top:32px}
+nav.route{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);align-self:start}
+nav.route ol{list-style:none;margin:0;padding:0;display:grid;gap:2px;counter-reset:st}
+nav.route a{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:7px 10px;border-radius:10px;color:var(--muted);text-decoration:none;font-size:14px}
+nav.route a span.n{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+nav.route a:hover,nav.route a.on{background:var(--soft);color:var(--fg)}
+nav.route a.on span.n{background:var(--olive);border-color:var(--olive);color:var(--on-olive)}
+nav.route .sep{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 10px 4px}
+
+main{min-width:0;display:grid;gap:56px}
+
+/* Cheat sheet */
+.sheet{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.sheet .card.wide{grid-column:1/-1}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px;align-content:start;min-width:0}
+.card h3{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.price{display:grid;gap:0;font-size:15px}
+.price .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;align-items:baseline;padding:8px 0;border-bottom:1px dashed var(--line)}
+.price .row > span:first-child{min-width:0}
+.price .row b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.price .row small{grid-column:1/-1;font-size:13px;color:var(--muted)}
+.price .grp{font-size:12px;color:var(--muted);margin-top:12px;letter-spacing:.06em;text-transform:uppercase}
+.big{font-family:var(--display);font-size:34px;font-weight:600;line-height:1;color:var(--olive-strong);font-variant-numeric:tabular-nums}
+.small{font-size:13px;color:var(--muted)}
+
+/* Stage */
+.stage{display:grid;gap:18px;scroll-margin-top:24px}
+.stage-head{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:end;border-bottom:1px solid var(--line);padding-bottom:12px}
+.stage-num{font-family:var(--display);font-size:64px;line-height:.8;font-weight:300;color:var(--olive);font-variant-numeric:tabular-nums}
+.stage-head h2{font-family:var(--display);font-size:clamp(28px,3.4vw,38px);font-weight:600;line-height:1.05}
+.goal{font-size:15px;color:var(--muted);max-width:62ch}
+.goal b{color:var(--fg)}
+
+.say{background:var(--say-bg);border-left:3px solid var(--say-line);border-radius:0 12px 12px 0;padding:14px 18px;display:grid;gap:6px}
+.say .who{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.say p{font-size:17px;line-height:1.55}
+.nm{display:inline-block;background:var(--olive);color:var(--on-olive);font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;vertical-align:2px}
+.ph{color:var(--muted);font-style:italic}
+
+.key{background:var(--key-bg);border-radius:12px;padding:14px 18px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.key .ic{width:24px;height:24px;border-radius:50%;background:var(--key);color:var(--bg);display:grid;place-items:center;font-weight:700;font-size:14px;line-height:1}
+.key p{font-size:15px}
+.key b{color:var(--key)}
+.warn{background:var(--warn-bg)}
+.warn .ic{background:var(--warn)}
+.warn b{color:var(--warn)}
+
+.bridge{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:14px}
+.bridge::before{content:"";flex:0 0 28px;height:1px;background:var(--olive)}
+.bridge b{color:var(--olive-strong);font-weight:600}
+
+/* Questions */
+.qs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:6px;min-width:0}
+.q .tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--olive)}
+.q p{font-size:15px}
+.q .why{font-size:13px;color:var(--muted)}
+
+/* Branch blocks */
+.branch{border-radius:14px;padding:16px 18px;display:grid;gap:10px}
+.branch .bh{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.b-fam{background:var(--fam-bg)} .b-fam .bh{color:var(--fam)}
+.b-inh{background:var(--inh-bg)} .b-inh .bh{color:var(--inh)}
+.branch ul{margin:0;padding-left:20px;display:grid;gap:6px}
+.b-ali{background:var(--ali-bg)} .b-ali .bh{color:var(--ali)}
+body[data-branch="fam"] .b-inh,body[data-branch="fam"] .b-ali{display:none}
+body[data-branch="inh"] .b-fam,body[data-branch="inh"] .b-ali{display:none}
+body[data-branch="ali"] .b-fam,body[data-branch="ali"] .b-inh,body[data-branch="ali"] .not-ali{display:none}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;counter-reset:f;margin:0;padding:0;list-style:none}
+.flow li{counter-increment:f;background:var(--surface);border-radius:10px;padding:10px 12px;font-size:13px;display:grid;gap:4px;min-width:0}
+.flow li::before{content:counter(f);width:24px;height:24px;border-radius:50%;background:var(--ali);color:var(--on-olive);display:grid;place-items:center;font-weight:700;font-size:12px}
+.flow li b{font-size:14px}
+.calc{background:var(--surface);border-radius:12px;padding:14px 16px;display:grid;gap:12px}
+.calc .in{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.calc label{display:grid;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.calc input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%;font-variant-numeric:tabular-nums}
+.calc input:focus-visible{outline:2px solid var(--ali);outline-offset:1px}
+.calc .out{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.calc .out div{background:var(--ali-bg);border-radius:10px;padding:10px 12px;min-width:0}
+.calc .out b{display:block;font-family:var(--display);font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.calc .out span{font-size:12px;color:var(--muted)}
+@media (max-width:620px){.flow,.calc .in,.calc .out{grid-template-columns:minmax(0,1fr)}}
+
+/* Fork */
+.fork{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;position:relative}
+.route-card{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:18px;display:grid;gap:12px;align-content:start;min-width:0}
+.route-card .rt{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.route-card .rt b{font-family:var(--display);font-size:26px;font-weight:600;line-height:1.1}
+.pill{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--fg);white-space:nowrap}
+.pill.go{background:var(--olive);color:var(--on-olive)}
+.list{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px}
+.list li{display:grid;grid-template-columns:1fr auto;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:6px}
+.list li span:last-child{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Objections */
+.objs{display:grid;gap:12px}
+details.obj{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+details.obj[open]{border-color:var(--olive)}
+details.obj summary{list-style:none;cursor:pointer;padding:16px 18px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+details.obj summary::-webkit-details-marker{display:none}
+details.obj summary:focus-visible{outline:2px solid var(--olive);outline-offset:2px;border-radius:14px}
+details.obj summary .t{font-family:var(--display);font-size:24px;font-weight:600;line-height:1.15}
+details.obj summary .where{font-size:12px;color:var(--muted);display:block;font-family:var(--body);font-weight:400;margin-top:2px}
+details.obj summary .chev{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;transition:transform .2s;color:var(--muted)}
+details.obj[open] summary .chev{transform:rotate(45deg);background:var(--olive);color:var(--on-olive);border-color:var(--olive)}
+.obj-body{padding:0 18px 18px;display:grid;gap:12px}
+.obj.main{border-width:2px;border-color:var(--key)}
+.obj.main summary .t{color:var(--key)}
+.cause{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.cause div{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:13px;min-width:0}
+.cause b{display:block;font-size:14px;margin-bottom:2px}
+.steps{counter-reset:s;display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.steps li{counter-increment:s;display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start}
+.steps li::before{content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--olive);color:var(--on-olive);display:grid;place-items:center;font-weight:700;font-size:13px}
+.steps li > div{display:grid;gap:6px;min-width:0}
+
+/* Boundaries */
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.two .card ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:15px}
+
+/* Template */
+.tpl{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tpl-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;background:var(--soft);font-size:13px;color:var(--muted);flex-wrap:wrap}
+.tpl pre{margin:0;padding:16px;white-space:pre-wrap;font-family:var(--body);font-size:15px;line-height:1.55;color:var(--fg)}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--olive);background:var(--olive);color:var(--on-olive);padding:6px 14px;border-radius:999px;cursor:pointer}
+.btn:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+
+footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+
+@media (max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:24px;padding-top:16px}
+  nav.route{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin-inline:-16px;padding:8px 16px;border-bottom:1px solid var(--line);overflow-x:auto}
+  nav.route ol{display:flex;gap:6px;width:max-content}
+  nav.route .sep{display:none}
+  nav.route a{grid-template-columns:auto auto;padding:6px 10px;white-space:nowrap;font-size:13px}
+  nav.route a span.n{width:22px;height:22px;font-size:11px}
+  .sheet{grid-template-columns:minmax(0,1fr)}
+  .cause{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:620px){
+  .qs,.fork,.two{grid-template-columns:minmax(0,1fr)}
+  .stage-num{font-size:48px}
+  .say p{font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important;scroll-behavior:auto!important} }
+html{scroll-behavior:smooth}
+</style>
+<style>html,body{margin:0}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Юрист Мария Гиря · для помощника</div>
+  <h1>Скрипт первого<br>разговора</h1>
+  <p class="lead">Девять шагов от «здравствуйте» до записи в календаре. Каждый шаг готовит следующий: <b>то, что вы выяснили на квалификации, становится аргументом в презентации</b>, а возражения закрываются раньше, чем клиент их произнесёт.</p>
+  <div class="switch">
+    <span class="lbl">Ветка разговора:</span>
+    <div class="seg" role="group" aria-label="Ветка разговора">
+      <button type="button" data-b="fam" aria-pressed="true">Развод и семья</button>
+      <button type="button" data-b="inh" aria-pressed="false">Наследство</button>
+      <button type="button" data-b="ali" aria-pressed="false">Алименты</button>
+    </div>
+  </div>
+  <div class="names">
+    <span>Имя клиента — минимум 5 раз:</span>
+    <span class="dot"><i>1</i>программирование</span>
+    <span class="dot"><i>2</i>резюме</span>
+    <span class="dot"><i>3</i>презентация</span>
+    <span class="dot"><i>4</i>предзакрытие</span>
+    <span class="dot"><i>5</i>закрытие</span>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="route" aria-label="Этапы разговора">
+    <ol>
+      <li><a href="#sheet"><span class="n">★</span>Шпаргалка</a></li>
+      <li class="sep">Разговор</li>
+      <li><a href="#s1"><span class="n">1</span>Приветствие</a></li>
+      <li><a href="#s2"><span class="n">2</span>Программирование</a></li>
+      <li><a href="#s3"><span class="n">3</span>Квалификация</a></li>
+      <li><a href="#s4"><span class="n">4</span>Резюмирование</a></li>
+      <li><a href="#s5"><span class="n">5</span>Презентация</a></li>
+      <li><a href="#s6"><span class="n">6</span>Предзакрытие</a></li>
+      <li><a href="#s7"><span class="n">7</span>Возражения</a></li>
+      <li><a href="#s8"><span class="n">8</span>Закрытие</a></li>
+      <li><a href="#s9"><span class="n">9</span>После звонка</a></li>
+      <li class="sep">Правила</li>
+      <li><a href="#limits"><span class="n">!</span>Границы помощника</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- CHEAT SHEET -->
+    <section id="sheet" class="stage">
+      <div class="stage-head"><span class="stage-num">★</span><div><h2>Шпаргалка: цифры под рукой</h2></div></div>
+      <div class="sheet">
+        <div class="card wide">
+          <h3>Услуги</h3>
+          <div class="price">
+            <span class="grp">Продаём сразу</span>
+            <div class="row"><span>Брачный договор у нотариуса</span><b>от 20 000 ₽</b><small>если брак не расторгнут</small></div>
+            <div class="row"><span>Соглашение о разделе имущества у нотариуса</span><b>от 20 000 ₽</b><small>если развод уже состоялся</small></div>
+            <div class="row"><span>Расторжение брака</span><b>40 000 ₽</b></div>
+            <div class="row"><span>Подготовка иска</span><b>от 20 000 ₽</b></div>
+            <div class="row"><span>Наследственное дело у нотариуса</span><b>от 50 000 ₽</b></div>
+            <span class="grp">Через консультацию</span>
+            <div class="row"><span>Суд под ключ, в т.ч. алименты</span><b>от 120 000 ₽</b></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Консультация</h3>
+          <div><div class="big">3 000 ₽</div><p class="small">без документов</p></div>
+          <div><div class="big">5 000 ₽</div><p class="small">с изучением документов</p></div>
+          <div class="key" style="padding:10px 12px"><span class="ic">✓</span><p><b>Засчитывается в договор.</b> Говорим об этом уже при записи.</p></div>
+        </div>
+        <div class="card">
+          <h3>Рассрочка</h3>
+          <div><div class="big">от 120 000 ₽</div><p class="small">только для таких договоров</p></div>
+          <p style="font-size:15px">50% аванс, остаток равными платежами на 2–3 месяца.</p>
+          <p class="small">Пример на 120 000 ₽: 60 000 сразу, затем 2 × 30 000 или 3 × 20 000.</p>
+          <div class="key warn" style="padding:10px 12px"><span class="ic">!</span><p><b>Для услуг дешевле 120 000 ₽ рассрочки нет.</b> Не обещаем.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1 -->
+    <section id="s1" class="stage">
+      <div class="stage-head"><span class="stage-num">1</span><div><h2>Приветствие</h2></div></div>
+      <p class="goal"><b>Зачем:</b> представиться от имени Марии и сразу получить имя клиента.</p>
+      <div class="say"><span class="who">Помощник</span><p>«Добрый день! Меня зовут <span class="ph">[ваше имя]</span>, я помощник юриста Марии Гири. Как я могу к вам обращаться?»</p></div>
+      <div class="key"><span class="ic">i</span><p>Имя <b>сразу записать</b> в карточку лида в Битрикс24. Дальше обращаемся по имени не меньше пяти раз.</p></div>
+      <div class="bridge">Имя есть → <b>задаём рамку разговора</b></div>
+    </section>
+
+    <!-- 2 -->
+    <section id="s2" class="stage">
+      <div class="stage-head"><span class="stage-num">2</span><div><h2>Программирование</h2></div></div>
+      <p class="goal"><b>Зачем:</b> клиент заранее соглашается с порядком разговора и с тем, что в конце примет решение. Это первая защита от «я подумаю».</p>
+      <div class="say"><span class="who">Помощник</span><p>«<span class="nm">Имя</span>, давайте поступим так. Я задам несколько вопросов, чтобы понять вашу ситуацию, расскажу, как мы решаем такие вопросы, затем либо сразу подскажу, либо запишу вас на консультацию к Марии, и озвучу условия. А вы решите. Хорошо?»</p></div>
+      <div class="key"><span class="ic">!</span><p><b>Дождаться «да».</b> Без него не переходить к вопросам.</p></div>
+      <div class="bridge">Согласие получено → <b>выясняем ситуацию</b></div>
+    </section>
+
+    <!-- 3 -->
+    <section id="s3" class="stage">
+      <div class="stage-head"><span class="stage-num">3</span><div><h2>Квалификация</h2></div></div>
+      <p class="goal"><b>Зачем:</b> понять ситуацию, срочность, документы, кто решает и <b>главную боль</b>. Здесь же заранее вскрываем будущие возражения.</p>
+
+      <div class="qs">
+        <div class="q"><span class="tag">Суть</span><p>«Расскажите, что произошло?»</p><span class="why">Слушаем, не перебиваем, записываем.</span></div>
+        <div class="q"><span class="tag">Срочность</span><p>«Есть ли сроки: заседание, повестка, иск от второй стороны?»</p><span class="why">Снимает «подумаю» — срочность становится ощутимой.</span></div>
+        <div class="q"><span class="tag">Документы</span><p>«Какие документы у вас на руках?»</p><span class="why">От ответа зависит консультация: 3 000 или 5 000 ₽.</span></div>
+        <div class="q"><span class="tag">Кто решает</span><p>«Кто ещё участвует в решении этого вопроса?»</p><span class="why">Снимает «посоветуюсь». Если решает не он — приглашаем вдвоём.</span></div>
+        <div class="q"><span class="tag">Опыт</span><p>«Пробовали что-то делать сами или обращались к юристам?»</p><span class="why">Снимает «сделаю сам» и «у другого дешевле».</span></div>
+        <div class="q"><span class="tag">Готовность</span><p>«Вы уже решили действовать или пока собираете информацию?»</p><span class="why">Если собирает информацию — продаём консультацию, не давим.</span></div>
+      </div>
+
+      <div class="branch b-fam">
+        <span class="bh">Ветка · развод и семья</span>
+        <ul>
+          <li>«Брак уже расторгнут или только планируете? Супруг согласен на развод?»</li>
+          <li>«Есть ли общие дети до 18 лет? Договорились, с кем они будут жить, и об алиментах?»</li>
+          <li>«Какое имущество нажито в браке: квартира, машина, ипотека, бизнес?»</li>
+          <li>«Есть ли брачный договор?»</li>
+        </ul>
+      </div>
+      <div class="branch b-inh">
+        <span class="bh">Ветка · наследство</span>
+        <ul>
+          <li>«Когда открылось наследство?» <b>Записать дату</b> — от неё считается срок 6 месяцев.</li>
+          <li>«Обращались к нотариусу? Наследственное дело уже заведено?»</li>
+          <li>«Есть ли завещание?»</li>
+          <li>«Кто ещё наследники? Есть ли между вами разногласия?»</li>
+          <li>«Что входит в наследство: квартира, дом, вклады, доля в бизнесе, долги?»</li>
+        </ul>
+      </div>
+
+      <div class="branch b-ali">
+        <span class="bh">Ветка · алименты</span>
+        <ul>
+          <li>«Сколько детей и сколько им лет?»</li>
+          <li>«Второй родитель сейчас помогает деньгами? Сколько и регулярно ли?»</li>
+          <li>«У него есть официальная работа? Примерно какой доход?» <b>От ответа зависит способ:</b> доля от дохода или твёрдая сумма.</li>
+          <li>«Алименты уже взыскиваются? Есть решение суда, судебный приказ или нотариальное соглашение? В каком виде: в доле от дохода или в твёрдой сумме?» <b>Так понимаем, как изменить размер:</b> перевести на твёрдую денежную сумму (ТДС) или на комбинированный способ — доля от дохода плюс твёрдая сумма. Если алименты не взыскивались, речь о новом иске.</li>
+          <li>«Вы просили его платить? Остались сообщения, переписка?» Это важно для взыскания за прошлое время.</li>
+        </ul>
+      </div>
+      <div class="q" style="border-color:var(--key)"><span class="tag" style="color:var(--key)">Главный вопрос этапа</span><p>«Что для вас самое важное в этой ситуации? Чего вы больше всего опасаетесь?»</p><span class="why">Ответ записать <b>дословно</b>. Это основа презентации на шаге 5.</span></div>
+
+      <div class="key"><span class="ic">?</span><p>Платёжеспособность выясняем мягко: <b>«Вы рассматриваете ведение дела полностью или пока хотите понять перспективы?»</b></p></div>
+      <div class="bridge">Картина ясна → <b>возвращаем её клиенту</b></div>
+    </section>
+
+    <!-- 4 -->
+    <section id="s4" class="stage">
+      <div class="stage-head"><span class="stage-num">4</span><div><h2>Резюмирование</h2></div></div>
+      <p class="goal"><b>Зачем:</b> показать, что клиента услышали, и сделать <b>цену бездействия</b> ощутимой. Это главная защита от «дорого» и «подумаю».</p>
+      <div class="say"><span class="who">Помощник</span><p>«<span class="nm">Имя</span>, правильно ли я понимаю: <span class="ph">[факты]</span>, и для вас главное — <span class="ph">[боль словами клиента]</span>. При этом важно учитывать, что <span class="ph">[риск из ветки ниже]</span>. Есть ли что-то, что вас особенно волнует и на что стоит обратить внимание?»</p></div>
+
+      <div class="branch b-fam">
+        <span class="bh">Риски, которые называем · семья</span>
+        <ul>
+          <li>Пока имущество не разделено, вторая сторона может им распорядиться, а вернуть потом сложнее.</li>
+          <li>Алименты по общему правилу взыскиваются с момента обращения в суд. Каждый месяц ожидания — это потерянные деньги.</li>
+          <li>Без соглашения о детях споры о месте жительства и общении затягиваются.</li>
+        </ul>
+      </div>
+      <div class="branch b-inh">
+        <span class="bh">Риски, которые называем · наследство</span>
+        <ul>
+          <li>На принятие наследства закон даёт 6 месяцев. Если срок пропущен, восстанавливать его придётся через суд, и это удаётся не всегда.</li>
+          <li>Пока наследство не оформлено, другие наследники могут действовать первыми.</li>
+          <li>Ошибки в документах у нотариуса потом исправляются только через суд.</li>
+        </ul>
+      </div>
+      <div class="branch b-ali">
+        <span class="bh">Риски, которые называем · алименты</span>
+        <ul>
+          <li>Алименты по общему правилу присуждаются с даты обращения в суд. Месяцы ожидания потом почти не вернуть.</li>
+          <li>Если доход неофициальный, доля от «белой» зарплаты может оказаться очень маленькой. Тогда нужна твёрдая сумма, и её придётся обосновать расходами на ребёнка.</li>
+          <li>Если алименты уже идут в доле от небольшой «белой» зарплаты, клиент годами получает меньше, чем тратит. Размер можно изменить через суд: перевести на ТДС или на комбинированный способ.</li>
+          <li>Если решение уже есть, а он не платит, долг растёт, но сам по себе не взыщется. Нужна работа с приставами.</li>
+        </ul>
+      </div>
+      <div class="key warn"><span class="ic">!</span><p><b>Не запугиваем.</b> Называем реальные риски именно этой ситуации, спокойным тоном.</p></div>
+      <div class="bridge">Боль названа → <b>показываем решение</b></div>
+    </section>
+
+    <!-- 5 -->
+    <section id="s5" class="stage">
+      <div class="stage-head"><span class="stage-num">5</span><div><h2>Презентация</h2></div></div>
+      <p class="goal"><b>Зачем:</b> показать, кто мы, и предложить <b>следующий шаг</b>, привязанный к боли из шага 3. Что именно продаём, зависит от стоимости.</p>
+      <div class="say"><span class="who">Помощник</span><p>«<span class="nm">Имя</span>, Мария работает юристом 20 лет, из них последние 10 лет ведёт исключительно семейные дела. В её практике есть дело о взыскании алиментов в размере полумиллиона рублей в месяц. Для вас, раз главное — <span class="ph">[боль]</span>, мы предлагаем…»</p></div>
+
+      <div class="fork not-ali">
+        <div class="route-card">
+          <div class="rt"><b>Документы и нотариус</b><span class="pill go">Продаём сразу</span></div>
+          <ul class="list b-fam" style="padding:0;background:none">
+            <li><span>Брачный договор у нотариуса<br><small style="color:var(--muted);font-weight:400">если брак не расторгнут</small></span><span>от 20 000 ₽</span></li>
+            <li><span>Соглашение о разделе имущества<br><small style="color:var(--muted);font-weight:400">если развод уже состоялся</small></span><span>от 20 000 ₽</span></li>
+            <li><span>Расторжение брака</span><span>40 000 ₽</span></li>
+            <li><span>Подготовка иска</span><span>от 20 000 ₽</span></li>
+          </ul>
+          <ul class="list b-inh" style="padding:0;background:none">
+            <li><span>Наследственное дело у нотариуса</span><span>от 50 000 ₽</span></li>
+            <li><span>Подготовка иска</span><span>от 20 000 ₽</span></li>
+          </ul>
+          <div class="say"><span class="who">Помощник</span><p>«Мы <span class="ph">[состав работ: подготовим, подадим, сопроводим]</span>, вы получите <span class="ph">[результат]</span>. Стоимость — <span class="ph">[сумма]</span>».</p></div>
+          <p class="small">Цена только вместе с составом работ. Рассрочки нет.</p>
+        </div>
+        <div class="route-card">
+          <div class="rt"><b>От 120 000 ₽</b><span class="pill">Продаём консультацию</span></div>
+          <ul class="list" style="padding:0">
+            <li><span>Суд под ключ, включая алименты</span><span>от 120 000 ₽</span></li>
+          </ul>
+          <div class="say"><span class="who">Помощник</span><p>«Такие дела Мария сначала разбирает на консультации: изучит документы, оценит перспективы и даст план. Это 5 000 ₽, и <b>они засчитываются в стоимость</b>, если вы продолжите работу с нами».</p></div>
+          <p class="small">Цель разговора — запись, не договор. Чем больше касаний, тем выше доверие.</p>
+        </div>
+      </div>
+      <div class="branch b-ali">
+        <span class="bh">Ветка · алименты — ключевой шаг: таблица расходов</span>
+        <p style="font-size:15px">С первого касания услугу за 120 000 ₽ не продаём. Вместо записи на консультацию предлагаем клиенту <b>заполнить таблицу расходов на ребёнка</b>. Клиент вкладывает время и силы, возвращается со своими цифрами, и математика становится его собственной.</p>
+        <ol class="flow">
+          <li><b>Предложить таблицу</b>первое касание</li>
+          <li><b>Клиент заполняет</b>1–3 дня, напомнить через 2 дня</li>
+          <li><b>Пауза: вопрос Марии</b>внутри команды, в тот же день</li>
+          <li><b>Второе касание</b>математика и договор</li>
+        </ol>
+      </div>
+
+      <div class="say b-ali"><span class="who">Помощник · первое касание</span><p>«<span class="nm">Имя</span>, чтобы понять, на какую сумму можно рассчитывать, нужен расчёт расходов на ребёнка. Если просить алименты в твёрдой сумме или дополнительные расходы, суд будет смотреть именно на эти цифры. Я пришлю таблицу: заполните примерные суммы по категориям, это займёт минут двадцать. До какого дня вам удобно её вернуть — до среды успеете?»</p></div>
+      <div class="key b-ali"><span class="ic">!</span><p><b>Цену 120 000 ₽ на первом касании не называем.</b> Цель разговора — договориться о дате, когда клиент вернёт таблицу.</p></div>
+
+      <div class="tpl b-ali">
+        <div class="tpl-head"><span>Пауза: сообщение Марии, когда таблица пришла</span><button class="btn" type="button" data-copy="tplMaria">Скопировать</button></div>
+        <pre id="tplMaria">Мария, алименты. Клиент: [имя].
+Дети: [сколько, возраст].
+Плательщик: доход [официальный / нет], примерно [сумма].
+Сейчас помогает: [да, сколько / нет].
+Уже взыскиваются: [нет / да — решение, приказ или соглашение].
+В каком виде сейчас: [доля от дохода / ТДС / комбинированно].
+Просила платить: [да, есть переписка / нет].
+Расходы по таблице: [сумма] ₽ в месяц.
+Вопрос: какую сумму реально просить? Если уже взыскиваются — менять на ТДС или на комбинированный способ?</pre>
+      </div>
+      <div class="key b-ali"><span class="ic">i</span><p>Мария отвечает в тот же день. Помощник возвращается к клиенту <b>не позже следующего дня</b>, пока расчёт свежий.</p></div>
+
+      <div class="say b-ali"><span class="who">Помощник · второе касание</span><p>«<span class="nm">Имя</span>, Мария посмотрела ваш расчёт. Ваши расходы на ребёнка — <span class="ph">[сумма]</span> в месяц. По её оценке, в вашей ситуации реально просить около <span class="ph">[сумма от Марии]</span> в месяц. Это <span class="ph">[×12]</span> в год, а платиться алименты будут до совершеннолетия ребёнка. Сопровождение под ключ стоит 120 000 ₽, это примерно <span class="ph">[N]</span> месяцев алиментов. Оплатить можно частями: 60 000 при заключении договора, остальное равными платежами за 2–3 месяца».</p></div>
+
+      <div class="calc b-ali">
+        <span class="bh" style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--ali)">Калькулятор для второго касания</span>
+        <div class="in">
+          <label for="cAmt">Оценка Марии, ₽ в месяц<input id="cAmt" type="number" inputmode="numeric" min="0" step="500" value="15000"></label>
+          <label for="cAge">Возраст ребёнка, лет<input id="cAge" type="number" inputmode="numeric" min="0" max="17" step="1" value="6"></label>
+          <label for="cFee">Стоимость услуги, ₽<input id="cFee" type="number" inputmode="numeric" min="0" step="1000" value="120000"></label>
+        </div>
+        <div class="out">
+          <div><b id="oYear">180 000 ₽</b><span>алиментов за год</span></div>
+          <div><b id="oAll">2 160 000 ₽</b><span>до 18 лет ребёнка</span></div>
+          <div><b id="oMon">8 мес.</b><span>алиментов покрывают услугу</span></div>
+        </div>
+        <p class="small">Пример с условными цифрами. Подставьте оценку Марии и возраст ребёнка из разговора.</p>
+      </div>
+
+      <div class="key warn b-ali"><span class="ic">!</span><p><b>Не обещаем, что клиент «получит не меньше, чем заплатит юристу».</b> Сумму назначает суд, а реальное получение зависит от доходов и имущества плательщика. Говорим «реально просить», «по оценке Марии», «порядок цифр».</p></div>
+      <div class="bridge">Предложение прозвучало → <b>проверяем готовность</b></div>
+    </section>
+
+    <!-- 6 -->
+    <section id="s6" class="stage">
+      <div class="stage-head"><span class="stage-num">6</span><div><h2>Предзакрытие</h2></div></div>
+      <p class="goal"><b>Зачем:</b> проверить готовность <b>до</b> того, как назвать дату или окончательную сумму. Сомнение, выясненное сейчас, легко снять. Сомнение после цены превращается в «я подумаю».</p>
+      <div class="say"><span class="who">Помощник</span><p>«<span class="nm">Имя</span>, как вам такой вариант? Если условия устроят, готовы начать на этой неделе?»</p></div>
+      <div class="key"><span class="ic">→</span><p>«Да» — сразу к шагу 8. <b>Пауза или «не знаю»</b> — спрашиваем, что останавливает, и открываем шаг 7.</p></div>
+    </section>
+
+    <!-- 7 -->
+    <section id="s7" class="stage">
+      <div class="stage-head"><span class="stage-num">7</span><div><h2>Возражения</h2></div></div>
+      <p class="goal"><b>Правило:</b> большинство возражений снимается на шагах 2–5. Если возражение прозвучало, значит что-то не выяснили раньше. Схема ответа всегда одна: <b>согласиться → уточнить → ответить на настоящую причину → назначить следующий шаг</b>.</p>
+
+      <div class="objs">
+
+        <details class="obj main" open>
+          <summary><span class="t">«Я подумаю»<span class="where">Самое частое. Предвосхищаем на шагах 2, 3, 4, 6</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <p class="small">За этой фразой обычно одна из четырёх причин:</p>
+            <div class="cause">
+              <div><b>Деньги</b>сумма неподъёмная разом</div>
+              <div><b>Не один решает</b>муж, мама, другие наследники</div>
+              <div><b>Нет срочности</b>кажется, что можно отложить</div>
+              <div><b>Не готов</b>к разводу или конфликту с родными</div>
+            </div>
+            <ol class="steps">
+              <li><div><b>Согласиться</b><div class="say"><p>«Конечно, решение важное».</p></div></div></li>
+              <li><div><b>Уточнить причину</b><div class="say"><p>«Чтобы мне было понятнее: что именно хотите обдумать — стоимость, порядок работы или нужно посоветоваться с кем-то?»</p></div></div></li>
+              <li><div><b>Ответить на настоящую причину</b>
+                <div class="qs">
+                  <div class="q"><span class="tag">Деньги, услуги без рассрочки</span><p>«Можно начать с консультации за 3 000 ₽, они войдут в стоимость, если продолжите».</p></div>
+                  <div class="q"><span class="tag">Деньги, от 120 000 ₽</span><p>«Оплату можно разбить: половина при заключении договора, остальное равными частями за 2–3 месяца».</p></div>
+                  <div class="q"><span class="tag">Не один решает</span><p>«Давайте запишу вас на консультацию вдвоём, чтобы вы оба услышали ответы».</p></div>
+                  <div class="q"><span class="tag">Не готов</span><p>«Тогда начните с консультации: Мария разберёт ситуацию, и вы будете решать, зная свои права и риски».</p></div>
+                </div>
+              </div></li>
+              <li><div><b>Не отпускать без даты</b><div class="say"><p>«<span class="nm">Имя</span>, когда вам удобно созвониться ещё раз: в понедельник или во вторник?»</p></div></div></li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="obj">
+          <summary><span class="t">«Посоветуюсь с мужем / мамой / детьми»<span class="where">Предвосхищаем на шаге 3: «Кто ещё участвует в решении?»</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Это правильно. Давайте запишем вас на консультацию вместе с <span class="ph">[кем]</span> — Мария ответит на вопросы обоих, и решать будет проще».</p></div>
+            <p class="small">В наследственных делах часто звонит один наследник, а решают несколько. Приглашаем всех, кто решает.</p>
+          </div>
+        </details>
+
+        <details class="obj">
+          <summary><span class="t">«Дорого»<span class="where">Предвосхищаем на шагах 4 и 5: цена бездействия и состав работ</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Понимаю. Давайте посмотрим, что входит в эту сумму: <span class="ph">[состав работ]</span>. А ошибка в такой ситуации, например <span class="ph">[риск из шага 4]</span>, обычно стоит дороже».</p></div>
+            <div class="qs">
+              <div class="q"><span class="tag">Услуги без рассрочки</span><p>Рассрочки нет. Предлагаем меньший шаг: консультацию за 3 000 или 5 000 ₽ с зачётом в стоимость.</p></div>
+              <div class="q"><span class="tag">От 120 000 ₽</span><p>Рассрочку называем <b>вместе с ценой</b>, а не в ответ на «дорого».</p></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="obj">
+          <summary><span class="t">«А вы гарантируете результат?»<span class="where">Предвосхищаем в презентации: похожие дела и честность</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Исход суда не может гарантировать ни один честный юрист. Мы гарантируем другое: Мария честно оценит перспективы, в том числе скажет, если шансы низкие. В договоре прописан объём работ, и вы видите каждый этап».</p></div>
+            <div class="key warn"><span class="ic">!</span><p><b>Никогда не обещаем выигрыш.</b> Это подрывает доверие и создаёт риск претензий.</p></div>
+          </div>
+        </details>
+
+        <details class="obj">
+          <summary><span class="t">«Сделаю сам / найду шаблон»<span class="where">Предвосхищаем на шаге 3: «Пробовали что-то делать сами?»</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Простой развод без споров действительно можно оформить самим. В вашем случае есть <span class="ph">[дети / ипотека / второй наследник против]</span>, и здесь ошибки в документах обычно обходятся дороже работы юриста».</p></div>
+            <p class="small">Если дело правда простое, честно говорим об этом. Это работает на доверие и на будущие обращения.</p>
+          </div>
+        </details>
+
+        <details class="obj">
+          <summary><span class="t">«У другого юриста дешевле»<span class="where">Предвосхищаем на шаге 3: «Обращались ли к юристам?»</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Хорошо, что вы сравниваете. Уточните, что входит в их стоимость? У нас <span class="ph">[состав работ, специализация на семейных и наследственных делах]</span>».</p></div>
+            <p class="small">Переводим сравнение с цены на объём работ и опыт.</p>
+          </div>
+        </details>
+
+        <details class="obj">
+          <summary><span class="t">«Не хочу судиться»<span class="where">Предвосхищаем на шаге 3: «Каким вы видите лучший исход?»</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Суд — не единственный путь. Часто вопрос решается соглашением: <span class="b-fam" style="background:none;padding:0">о разделе имущества, об алиментах, о детях</span><span class="b-inh" style="background:none;padding:0">между наследниками о разделе наследства</span><span class="b-ali" style="background:none;padding:0">нотариальным соглашением об уплате алиментов</span>. Мария скажет, возможно ли это в вашем случае».</p></div>
+          </div>
+        </details>
+
+        <details class="obj b-ali" style="background:var(--surface)">
+          <summary><span class="t">«Он всё равно не будет платить»<span class="where">Ветка алименты. Предвосхищаем на шаге 3: работа и доход плательщика</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Решение суда даёт инструменты, которых нет сейчас: приставы, удержание из зарплаты, арест счетов, а при долге — ограничение выезда за границу и права управления машиной. Честно скажу: если официальных доходов и имущества нет, взыскание может идти долго. Мария оценит это на вашем расчёте».</p></div>
+          </div>
+        </details>
+
+        <details class="obj b-ali" style="background:var(--surface)">
+          <summary><span class="t">«Подам на судебный приказ сама»<span class="where">Ветка алименты. Отвечаем честно</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Если у него официальная зарплата и нужна просто доля от дохода, приказ действительно можно получить самостоятельно. Но если доход серый или нужна твёрдая сумма, приказ не подходит: нужен иск и обоснование расходов, как раз ваш расчёт».</p></div>
+            <p class="small">Если ситуация правда простая, так и говорим. Это работает на доверие и отзывы.</p>
+          </div>
+        </details>
+
+        <details class="obj">
+          <summary><span class="t">«Я вас не знаю» / удалённо<span class="where">Предвосхищаем в приветствии и презентации</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«Мария работает юристом 20 лет, последние 10 — только семейные дела. Посмотрите отзывы о ней на Авито и её публикации в Instagram. Работаем по договору, оплата по реквизитам, документы можно прислать в MAX, а в заседаниях Мария участвует сама».</p></div>
+          </div>
+        </details>
+
+        <details class="obj">
+          <summary><span class="t">«Почему консультация платная?»<span class="where">Предвосхищаем в презентации: что клиент получит</span></span><span class="chev">+</span></summary>
+          <div class="obj-body">
+            <div class="say"><p>«На консультации Мария изучит вашу ситуацию и документы, оценит перспективы и даст конкретный план действий. А если вы продолжите работу с нами, эта сумма засчитывается в стоимость — для наших клиентов консультация по сути бесплатна».</p></div>
+          </div>
+        </details>
+
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section id="s8" class="stage">
+      <div class="stage-head"><span class="stage-num">8</span><div><h2>Закрытие</h2></div></div>
+      <p class="goal"><b>Зачем:</b> закончить разговор конкретным действием с датой. Не «звоните, если что», а запись в календаре.</p>
+      <div class="say"><span class="who">Помощник</span><p>«<span class="nm">Имя</span>, записываю вас к Марии. Вам удобнее в четверг в 15:00 или в пятницу утром?»</p></div>
+      <div class="say"><span class="who">Помощник</span><p>«Пришлите, пожалуйста, фото документов в MAX до <span class="ph">[дата]</span>, Мария изучит их заранее. Напомню: стоимость консультации засчитывается в договор».</p></div>
+      <div class="say b-ali"><span class="who">Помощник · алименты, первое касание</span><p>«<span class="nm">Имя</span>, отправлю таблицу в MAX в двух вариантах: ссылкой для телефона и файлом для компьютера, выберете, как удобнее. Договоримся так: вы присылаете её до <span class="ph">[день]</span>, и в тот же или на следующий день я вернусь к вам с оценкой Марии. Хорошо?»</p></div>
+      <div class="say b-ali"><span class="who">Помощник · алименты, второе касание</span><p>«<span class="nm">Имя</span>, готовлю договор? Вам удобнее оплатить сразу или частями?»</p></div>
+      <div class="key"><span class="ic">i</span><p>Выбор из <b>двух вариантов</b> времени, а не «когда вам удобно». Так проще ответить «да».</p></div>
+    </section>
+
+    <!-- 9 -->
+    <section id="s9" class="stage">
+      <div class="stage-head"><span class="stage-num">9</span><div><h2>После звонка</h2></div></div>
+      <p class="goal"><b>Зачем:</b> письменное резюме — это ещё одно касание. Клиент перечитывает его, когда «думает», и это работает лучше, чем память о разговоре.</p>
+      <div class="tpl">
+        <div class="tpl-head"><span>Сообщение в MAX — в тот же день</span><button class="btn" type="button" data-copy="tplText">Скопировать</button></div>
+        <pre id="tplText">[Имя], добрый день! Это [ваше имя], помощник юриста Марии Гири. Спасибо за разговор.
+
+Коротко, что обсудили:
+• ситуация: [суть в одной фразе]
+• что важно для вас: [боль]
+• что предлагаем: [услуга или консультация], стоимость [сумма]
+  (консультация засчитывается в стоимость договора)
+
+Вы записаны на [дата, время]. Документы можно прислать сюда заранее.
+
+Если появятся вопросы — пишите, я на связи.</pre>
+      </div>
+      <div class="tpl b-ali">
+        <div class="tpl-head"><span>Алименты: сообщение с таблицей (ссылка + файл Excel) и напоминание</span><button class="btn" type="button" data-copy="tplAli">Скопировать</button></div>
+        <pre id="tplAli">[Имя], добрый день! Это [ваше имя], помощник юриста Марии Гири.
+
+Как договорились, отправляю таблицу расходов на ребёнка в двух вариантах. Выберите, как вам удобнее:
+
+📱 С телефона — по ссылке: [ссылка]
+Открывается в браузере, ничего устанавливать не нужно. Впишите примерные суммы, итог посчитается сам. В конце нажмите «Скопировать расчёт» и вставьте текст сюда, в этот чат.
+
+💻 С компьютера — файл Excel (прикрепляю ниже).
+Заполните светлые ячейки, итог тоже пересчитается автоматически. Готовый файл пришлите обратно сюда.
+
+Суммы пишите примерные, до рубля не нужно. Пришлите расчёт до [день], и я вернусь к вам с оценкой Марии.
+
+Через 2 дня, если расчёт не пришёл:
+[Имя], как продвигается расчёт? Если что-то непонятно в категориях, подскажу.</pre>
+      </div>
+      <div class="key"><span class="ic">✓</span><p>В Битрикс24 отметить: <b>этап лида, главную боль, прозвучавшие возражения и дату следующего контакта</b>. Через месяц по этим записям будет видно, на каком шаге скрипт теряет клиентов.</p></div>
+    </section>
+
+    <!-- LIMITS -->
+    <section id="limits" class="stage">
+      <div class="stage-head"><span class="stage-num">!</span><div><h2>Границы помощника</h2></div></div>
+      <p class="goal">Чтобы клиент не получил бесплатный ответ вместо платной консультации и не получил неточный.</p>
+      <div class="two">
+        <div class="card"><h3>Помощник говорит сам</h3><ul><li>порядок действий в общих чертах</li><li>какие документы нужны</li><li>сроки, которые нельзя пропустить</li><li>стоимость и условия</li></ul></div>
+        <div class="card"><h3>Только Мария</h3><ul><li>перспективы конкретного дела</li><li>правовая позиция и стратегия</li><li>оценка документов</li><li>любые прогнозы исхода</li></ul></div>
+      </div>
+      <div class="say"><span class="who">Если клиент просит оценку</span><p>«Это хороший вопрос, и ответ зависит от деталей. Как раз его Мария разберёт на консультации».</p></div>
+    </section>
+
+  </main>
+</div>
+
+<footer>Скрипт для внутреннего использования · юрист Мария Гиря, Краснодар</footer>
+</div>
+
+<script>
+(function(){
+  var body=document.body;
+  var btns=document.querySelectorAll('.seg button');
+  function setBranch(b){
+    body.setAttribute('data-branch',b);
+    btns.forEach(function(x){x.setAttribute('aria-pressed',x.dataset.b===b?'true':'false')});
+    try{localStorage.setItem('branch',b)}catch(e){}
+  }
+  var saved='fam';
+  try{saved=localStorage.getItem('branch')||'fam'}catch(e){}
+  setBranch(saved==='inh'||saved==='ali'?saved:'fam');
+  btns.forEach(function(x){x.addEventListener('click',function(){setBranch(x.dataset.b)})});
+
+  document.querySelectorAll('[data-copy]').forEach(function(copy){
+    copy.addEventListener('click',function(){
+      var t=document.getElementById(copy.getAttribute('data-copy'));
+      function sel(){var r=document.createRange();r.selectNodeContents(t);var sl=getSelection();sl.removeAllRanges();sl.addRange(r);copy.textContent='Выделено — нажмите ⌘C'}
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(t.innerText).then(function(){copy.textContent='Скопировано'},sel);
+      } else sel();
+      setTimeout(function(){copy.textContent='Скопировать'},2500);
+    });
+  });
+
+  function fmt(n){return Math.round(n).toLocaleString('ru-RU')+' ₽'}
+  function calc(){
+    var a=+document.getElementById('cAmt').value||0, age=+document.getElementById('cAge').value||0, fee=+document.getElementById('cFee').value||0;
+    var left=Math.max(0,18-age)*12;
+    document.getElementById('oYear').textContent=fmt(a*12);
+    document.getElementById('oAll').textContent=fmt(a*left);
+    document.getElementById('oMon').textContent=a>0?(Math.ceil(fee/a)+' мес.'):'—';
+  }
+  ['cAmt','cAge','cFee'].forEach(function(id){document.getElementById(id).addEventListener('input',calc)});
+  calc();
+
+  var links=[].slice.call(document.querySelectorAll('nav.route a'));
+  var map=links.map(function(a){return document.querySelector(a.getAttribute('href'))});
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if(e.isIntersecting){
+          var i=map.indexOf(e.target);
+          links.forEach(function(l,j){l.classList.toggle('on',j===i)});
+          if(window.innerWidth<=900&&links[i]){links[i].scrollIntoView({block:'nearest',inline:'center'})}
+        }
+      });
+    },{rootMargin:'-30% 0px -60% 0px'});
+    map.forEach(function(s){if(s)io.observe(s)});
+  }
+})();
+</script>
+
+</body>
+</html>
