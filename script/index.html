@@ -195,6 +195,9 @@ details.obj[open] summary .chev{transform:rotate(45deg);background:var(--olive);
 .two .card ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:15px}
 
 /* Template */
+.seg.outs{flex-wrap:wrap;border-radius:14px}
+.seg.outs button[aria-pressed="true"]{background:var(--olive);color:var(--on-olive)}
+
 .tpl{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .tpl-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;background:var(--soft);font-size:13px;color:var(--muted);flex-wrap:wrap}
 .tpl pre{margin:0;padding:16px;white-space:pre-wrap;font-family:var(--body);font-size:15px;line-height:1.55;color:var(--fg)}
@@ -625,20 +628,51 @@ html{scroll-behavior:smooth}
     <section id="s9" class="stage">
       <div class="stage-head"><span class="stage-num">9</span><div><h2>После звонка</h2></div></div>
       <p class="goal"><b>Зачем:</b> письменное резюме — это ещё одно касание. Клиент перечитывает его, когда «думает», и это работает лучше, чем память о разговоре.</p>
-      <div class="tpl">
-        <div class="tpl-head"><span>Сообщение в MAX — в тот же день</span><button class="btn" type="button" data-copy="tplText">Скопировать</button></div>
-        <pre id="tplText">[Имя], добрый день! Это [ваше имя], помощник юриста Марии Гири. Спасибо за разговор.
+      <p class="goal" style="margin-top:4px"><b>Чем закончился разговор?</b> Выберите исход — и скопируйте нужное резюме. Отправить в тот же день, боль — словами клиента, в конце — дата следующего шага. Для алиментов с таблицей — отдельное сообщение ниже.</p>
+      <div class="seg outs" role="group" aria-label="Исход разговора">
+          <button type="button" data-out="consult" aria-pressed="true">Записался на консультацию</button>
+          <button type="button" data-out="deal" aria-pressed="false">Готов заказать услугу</button>
+          <button type="button" data-out="think" aria-pressed="false">«Я подумаю»</button>
+      </div>
+      <div class="tpl" data-outbox="consult">
+        <div class="tpl-head"><span>Резюме в MAX — Записался на консультацию</span><button class="btn" type="button" data-copy="tpl_consult">Скопировать</button></div>
+        <pre id="tpl_consult">[Имя], добрый день! Это [ваше имя], помощник юриста Марии Гири. Спасибо за разговор.
 
 Коротко, что обсудили:
-• ситуация: [суть в одной фразе]
-• что важно для вас: [боль]
-• что предлагаем: [услуга или консультация], стоимость [сумма]
-  (консультация засчитывается в стоимость договора)
+• ваша ситуация: [суть одной фразой]
+• что для вас главное: [боль словами клиента]
 
-Вы записаны на [дата, время]. Документы можно прислать сюда заранее.
+Вы записаны на консультацию к Марии: [дата, время, онлайн / адрес]. Стоимость [3 000 / 5 000] ₽ — она засчитывается в договор, если продолжите работу с нами.
 
-Если появятся вопросы — пишите, я на связи.</pre>
+Чтобы Мария подготовилась заранее, пришлите сюда до [дата] фото документов: [список].
+
+Если планы изменятся — напишите, перенесём.</pre>
       </div>
+      <div class="tpl" data-outbox="deal" hidden>
+        <div class="tpl-head"><span>Резюме в MAX — Готов заказать услугу</span><button class="btn" type="button" data-copy="tpl_deal">Скопировать</button></div>
+        <pre id="tpl_deal">[Имя], добрый день! Это [ваше имя], помощник юриста Марии Гири. Спасибо, что выбрали нас.
+
+Что мы сделаем: [услуга и состав работ].
+Стоимость: [сумма] ₽[, оплата частями: 50% при заключении договора, остальное равными платежами за 2–3 месяца].
+
+Для договора пришлите, пожалуйста:
+• фото паспорта (разворот и прописка);
+• [документы по делу].
+
+Договор подготовлю и пришлю сюда [когда].</pre>
+      </div>
+      <div class="tpl" data-outbox="think" hidden>
+        <div class="tpl-head"><span>Резюме в MAX — «Я подумаю»</span><button class="btn" type="button" data-copy="tpl_think">Скопировать</button></div>
+        <pre id="tpl_think">[Имя], спасибо за разговор! Понимаю, решение важное — подумайте спокойно.
+
+Чтобы было проще, коротко, что обсудили:
+• ваша ситуация: [суть]
+• что важно учесть: [один главный риск или срок — например, «срок принятия наследства до 14.03»]
+• что можем предложить: [услуга или консультация], [цена]
+
+Как договорились, напишу вам [день]. Если вопросы появятся раньше — пишите в любое время.</pre>
+      </div>
+      <div class="key warn"><span class="ic">!</span><p><b>В резюме нельзя:</b> оценивать перспективы («выиграем», «шансы высокие») — это только Мария; расписывать закон — 3–5 строк по сути; заканчивать без даты следующего шага.</p></div>
       <div class="tpl b-ali">
         <div class="tpl-head"><span>Алименты: сообщение с таблицей (ссылка + файл Excel) и напоминание</span><button class="btn" type="button" data-copy="tplAli">Скопировать</button></div>
         <pre id="tplAli">[Имя], добрый день! Это [ваше имя], помощник юриста Марии Гири.
@@ -692,6 +726,7 @@ html{scroll-behavior:smooth}
   setBranch(saved==='inh'||saved==='ali'?saved:'fam');
   btns.forEach(function(x){x.addEventListener('click',function(){setBranch(x.dataset.b)})});
 
+  document.querySelectorAll('.outs button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.outs button').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});document.querySelectorAll('[data-outbox]').forEach(function(d){d.hidden=d.getAttribute('data-outbox')!==b.dataset.out})})});
   document.querySelectorAll('[data-copy]').forEach(function(copy){
     copy.addEventListener('click',function(){
       var t=document.getElementById(copy.getAttribute('data-copy'));
